@@ -58,7 +58,7 @@
         });
     </script>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-100 min-h-screen" x-data="activityLog()">
     <div class="min-h-screen">
         <!-- Top Navigation Bar -->
         <nav class="bg-white shadow-sm">
@@ -233,8 +233,27 @@
                                             {{ $log->event ?? 'N/A' }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500">
-                                        <pre class="whitespace-pre-wrap"><code class="language-json">{{ json_encode($log->properties, JSON_PRETTY_PRINT) }}</code></pre>
+                                    <td class="px-6 py-4 text-sm text-gray-900 text-center">
+                                        @if($log->properties->isNotEmpty())
+                                            <button
+                                                {{-- Store data in data-* attributes to avoid quote conflicts --}}
+                                                data-title="Properties for Log #{{ $log->id }}"
+                                                data-properties="@json($log->properties)"
+
+                                                {{-- The @click reads the data from the element itself ($el) and parses the JSON --}}
+                                                @click="openModal($el.dataset.title, {{ json_encode($log->properties) }})"
+
+                                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
+
+                                                <svg class="w-4 h-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                View
+                                            </button>
+                                        @else
+                                            <span class="text-gray-400">N/A</span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500">{{ $log->created_at->format('Y-m-d H:i:s') }}</td>
                                 </tr>
@@ -356,5 +375,67 @@
             </div>
         </div>
     </div>
+
+    <div x-show="isModalOpen"
+        x-transition:enter="ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 overflow-y-auto"
+        aria-labelledby="modal-title" role="dialog" aria-modal="true"
+        style="display: none;">
+
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div @click="isModalOpen = false" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="w-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title" x-text="modalTitle"></h3>
+                            <button @click="isModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                                <span class="sr-only">Close</span>
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="mt-2 max-h-[60vh] overflow-y-auto">
+                            <pre><code id="modal-code" class="language-json rounded-lg border" x-text="modalContent"></code></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button @click="isModalOpen = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function activityLog() {
+            return {
+                isModalOpen: false,
+                modalContent: '',
+                modalTitle: '',
+                openModal(title, properties) {
+                    this.isModalOpen = true;
+                    this.modalTitle = title;
+                    this.modalContent = JSON.stringify(properties, null, 4);
+
+                    this.$nextTick(() => {
+                        const codeBlock = document.getElementById('modal-code');
+                        if (codeBlock) {
+                            hljs.highlightElement(codeBlock);
+                        }
+                    });
+                }
+            }
+        }
+    </script>
 </body>
 </html>
